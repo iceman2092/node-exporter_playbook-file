@@ -1,0 +1,76 @@
+---
+ - hosts: localhost
+   tasks:
+
+   - name: Downloading node-exporter.
+     become: yes
+     get_url:
+       url: https://github.com/prometheus/node_exporter/releases/download/v1.3.1/node_exporter-1.3.1.darwin-amd64.tar.gz
+       dest: /home/user/
+       mode: 444
+
+   - name: Unarchive.
+     unarchive:
+        src: /home/user/node_exporter-1.3.1.darwin-amd64.tar.gz
+        dest: /home/user/
+        mode: 444
+
+   - name: Copying binary file.
+     copy:
+       src: /home/user/node_exporter-1.3.1.darwin-amd64/node_exporter
+       dest: /usr/local/bin
+
+   - name: Creating node_exporter group.
+     group:
+       name: node_exporter
+       state: present
+     become: true
+
+   - name: Creating user node_exporter.
+     user:
+       name: node_exporter
+       groups: node_exporter
+       shell: /sbin/nologin
+       create_home: no
+       append: yes
+       comment: "Node-exporter nologin User"
+       state: present
+     become: true
+
+   - name: Creating node_exporter.service file.
+     copy:
+       dest: /etc/systemd/system/node_exporter.service
+       mode: 444
+       content: |
+         [Unit]
+         Description=Node Exporter
+         After=network.target
+         [Service]
+         User=node_exporter
+         Group=node_exporter
+         Type=simple
+         EnvironmentFile=/etc/sysconfig/node_exporter
+         ExecStart=/usr/local/bin/node_exporter start
+         ExecStop=/usr/local/bin/node_exporter stop
+         ExecReload=/usr/local/bin/node_exporter reload
+         [Install]
+         WantedBy=multi-user.target
+
+   - name: Creating node_exporter sysconfig file.
+     copy:
+       dest: /etc/sysconfig/node_exporter
+       mode: 444
+       content: |
+         OPTIONS="--collector.textfile.directory /var/lib/node_exporter/textfile_collector"
+
+   - name: Performing daemon reload.
+     systemd:
+       name: node_exporter.service
+       state: restarted
+       daemon_reload: yes
+
+   - name: Starting and enabling node_exporter service at startup.
+     systemd:
+       name: node_exporter.service
+       state: started
+       enabled: yes
