@@ -1,0 +1,4 @@
+1. Execute install-ansible.sh first to install dependencies for ansible.
+2. Execute:
+   ansible-playbook --connection==local playbook.yml
+Keep the connection local/some ip based on your usecase.
